@@ -1,0 +1,127 @@
+{
+ "v": 3,
+ "pine_version": "range_v7.14",
+ "mode": "signal",
+ "signal_id": "5838_20260902_LONG",
+ "symbol": "5838",
+ "name": "RAKUTEN BANK",
+ "exchange": "TSE",
+ "tickerid": "TSE:5838",
+ "tv_url": "https://www.tradingview.com/chart/?symbol=TSE:5838",
+ "tf": "1D",
+ "bar_date": "2026-09-02",
+ "price": 3656.0,
+ "open": 3660.5,
+ "high": 3666.3,
+ "low": 3645.8,
+ "prev_close": 3660.5,
+ "change_pct": -0.12293402540636267,
+ "volume": 159942,
+ "vol_ratio_1": 1.1,
+ "vol_ratio_20": 0.95,
+ "atr": 36.103829013171826,
+ "channel": {
+  "len": 30,
+  "width_type": "stdev2",
+  "upper": 3807.1882755545926,
+  "lower": 3632.4831222948683,
+  "mid": 3719.8356989247304,
+  "slope": 12.846829810901,
+  "off": 87.35257662986199,
+  "width_pct": 4.778587342990262,
+  "width_atr": 4.838964675906978,
+  "pos_pct": 13.46089526630651
+ },
+ "features": {
+  "slope_atr": 0.35583012001896164,
+  "eff_ratio": 0.4283576505798725,
+  "touch_up": 3,
+  "touch_dn": 2,
+  "stability": 0.82,
+  "bull_bar": false,
+  "upper_half": true,
+  "gap_pct": 0.3,
+  "event_bar": false,
+  "vol_spike": false
+ },
+ "base": {
+  "class": "uptrend_pause",
+  "above_ma100": true,
+  "ma5": 3670.5400000000036,
+  "ma10": 3673.4400000000032,
+  "ma20": 3599.5799999999995,
+  "ma50": 3564.9819999999977,
+  "ma100": 3402.4910000000004,
+  "ma20_chg5_pct": 1.9895958474057673,
+  "ma100_chg20_pct": 3.54100523746943,
+  "w_ma5": null,
+  "w_ma10": null,
+  "w_ma20": null,
+  "w_ma5_chg1_pct": 1.373059371201868,
+  "w_ma10_chg1_pct": 1.0197967222239646
+ },
+ "gates": {
+  "l1_flat": false,
+  "l1_base": true,
+  "l2_width": false,
+  "l2_stab": false,
+  "l2_touch_buy": true,
+  "l2_touch_sell": true,
+  "confirm_buy": true,
+  "confirm_sell": true,
+  "can_fade": true,
+  "fail_reason": "-"
+ },
+ "signal": {
+  "method": "C",
+  "fired": true,
+  "side": "LONG",
+  "kind": "pullback",
+  "break_up": false,
+  "break_down": false
+ },
+ "shadow": [
+  {
+   "method": "A",
+   "width_type": "raff",
+   "upper": 3799.558064516129,
+   "lower": 3640.113333333332,
+   "pos_pct": 9.963745147812189,
+   "fired": false,
+   "side": ""
+  },
+  {
+   "method": "B",
+   "upper": 3807.1882755545926,
+   "lower": 3632.4831222948683,
+   "pos_pct": 13.46089526630651,
+   "fired": true,
+   "side": "LONG"
+  }
+ ],
+ "evidence": {
+  "round_up": 3700,
+  "round_down": 3600,
+  "body_high_20": 3703.7,
+  "body_high_40": 3703.7,
+  "body_high_60": 3703.7,
+  "body_low_20": 3387.8,
+  "body_low_40": 3382.9,
+  "body_low_60": 3284.4,
+  "volzone_1_20": {
+   "low": 3627.4831222948683,
+   "high": 3657.4831222948683,
+   "ratio": 1.6
+  },
+  "volzone_21_40": {
+   "low": 3719.8356989247304,
+   "high": 3759.8356989247304,
+   "ratio": 1.1
+  },
+  "volzone_41_60": {
+   "low": 3777.1882755545926,
+   "high": 3817.1882755545926,
+   "ratio": 2.1
+  }
+ }
+}
