@@ -116,6 +116,9 @@ VERIFY_TOUCH_TOL = _int("VERIFY_TOUCH_TOL", 1)      # 反応点の許容差
 
 # ---- まとめ配信 ----
 SUMMARY_SECRET = _str("SUMMARY_SECRET", "")
-STOCK_MASTER_CSV_URL = _str("STOCK_MASTER_CSV_URL", "")
+# 銘柄マスタ（日本語の社名・市場・業種）。リポジトリに置いたファイルを読むのが既定。
+# 非公開リポジトリの raw アドレスはトークン付きで期限切れになるため、URL は使わない。
+STOCK_MASTER_CSV_PATH = _str("STOCK_MASTER_CSV_PATH", "data_j.csv")
+STOCK_MASTER_CSV_URL = _str("STOCK_MASTER_CSV_URL", "")   # 公開 CSV を使いたいときだけ
 STOCK_MASTER_CACHE_SECONDS = _int("STOCK_MASTER_CACHE_SECONDS", 3600)
 MARKET_SYMBOL_MAIN = _str("MARKET_SYMBOL_MAIN", "NI225")   # 地合いの代表として記録に付ける銘柄
