@@ -1,0 +1,10 @@
+name: monthly (1st 09:00 JST)
+on:
+  schedule:
+    - cron: "0 0 1 * *"
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -sS --max-time 300 "${{ secrets.RENDER_URL }}/summary/monthly?secret=${{ secrets.SUMMARY_SECRET }}"
