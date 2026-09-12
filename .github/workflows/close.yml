@@ -1,0 +1,16 @@
+name: close (15:45 receive check, 15:50 digest JST)
+on:
+  schedule:
+    - cron: "45 6 * * 1-5"
+    - cron: "50 6 * * 1-5"
+  workflow_dispatch:
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - name: receive check
+        if: github.event.schedule == '45 6 * * 1-5' || github.event_name == 'workflow_dispatch'
+        run: curl -sS --max-time 120 "${{ secrets.RENDER_URL }}/ops/receive-check?secret=${{ secrets.SUMMARY_SECRET }}&expected=${{ vars.EXPECTED_DAILY_RECEIVES || 0 }}"
+      - name: close digest
+        if: github.event.schedule == '50 6 * * 1-5' || github.event_name == 'workflow_dispatch'
+        run: curl -sS --max-time 300 "${{ secrets.RENDER_URL }}/summary/close-digest?secret=${{ secrets.SUMMARY_SECRET }}"
