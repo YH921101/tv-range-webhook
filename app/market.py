@@ -53,7 +53,9 @@ async def enrich(row: Dict[str, Any], db: Database) -> None:
         r = await db.fetch_one("SELECT name, market, sector FROM stock_master WHERE symbol = ?", [row.get("symbol")])
         e = dict(r) if r else None
     if e:
-        if e.get("name") and not row.get("name"):
+        # 銘柄名は銘柄マスタを優先する。Pine から来る名前は取引所の英語表記
+        # （RAKUTEN BANK）なので、日本語名があればそちらに差し替える。
+        if e.get("name"):
             row["name"] = e["name"]
         row["market"] = e.get("market") or row.get("market")
         row["sector"] = e.get("sector") or row.get("sector")

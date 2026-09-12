@@ -138,6 +138,40 @@ async def receive_check(request: Request) -> JSONResponse:
     return JSONResponse(await summaries.receive_check(get_db(), request.query_params.get("date"), expected))
 
 
+async def discord_test(request: Request) -> JSONResponse:
+    """Discord の3チャンネルに1行ずつ送って、どれが通るかを返す。
+
+    エラー通知が黙ったときに、webhook URL の貼り間違いなのか、チャンネルの種類
+    （通常／フォーラム）の食い違いなのかを、画面だけで切り分けられるようにする。
+    """
+    if not _secret_ok(request):
+        return JSONResponse({"ok": False, "error": "secret が違います"}, status_code=403)
+    stamp = datetime.now(JST).strftime("%m-%d %H:%M:%S")
+    targets = [
+        ("即時（realtime）", config.DISCORD_WEBHOOK_URL_REALTIME, config.DISCORD_REALTIME_IS_FORUM, "DISCORD_REALTIME_IS_FORUM"),
+        ("まとめ（digest）", config.DISCORD_WEBHOOK_URL_DIGEST, config.DISCORD_DIGEST_IS_FORUM, "DISCORD_DIGEST_IS_FORUM"),
+        ("エラー（error）", config.DISCORD_WEBHOOK_URL_ERROR, False, "-"),
+        ("手仕舞い（exit）", config.DISCORD_WEBHOOK_URL_EXIT, False, "-"),
+    ]
+    out: Dict[str, Any] = {}
+    for label, url, is_forum in ((t[0], t[1], t[2]) for t in targets):
+        if not url:
+            out[label] = "未設定（空でよい場合もあります）"
+            continue
+        msg = "🔧 接続確認 %s（%s）" % (label, stamp)
+        tname = ("接続確認 " + stamp) if is_forum else None
+        if await discord.post(url, msg, tname):
+            out[label] = "ok"
+            continue
+        # 種類が逆かもしれないので、もう一方の形で試す
+        alt = None if is_forum else ("接続確認 " + stamp)
+        if await discord.post(url, msg, alt):
+            out[label] = "ok（%s として送れました。想定と逆なので設定を見直してください）" % ("通常チャンネル" if is_forum else "フォーラム")
+        else:
+            out[label] = "失敗（URL の貼り間違いの可能性。Render の Logs に discord post failed の理由が出ます）"
+    return JSONResponse({"ok": True, "結果": out})
+
+
 async def stock_master_status(request: Request) -> JSONResponse:
     force = request.query_params.get("force", "false").lower() in ("1", "true")
     m = await market.load_stock_master(force=force)
@@ -154,6 +188,7 @@ routes = [
     Route("/summary/morning", _summary_route(summaries.morning)),
     Route("/summary/monthly", _summary_route(summaries.monthly)),
     Route("/ops/receive-check", receive_check),
+    Route("/ops/discord-test", discord_test),
     Route("/stock-master/status", stock_master_status),
 ]
 

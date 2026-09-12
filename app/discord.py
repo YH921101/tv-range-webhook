@@ -139,7 +139,21 @@ def _message_url(j: Dict[str, Any]) -> Optional[str]:
 
 
 async def error(message: str) -> None:
+    """エラーの知らせ。ここが黙ると異常に気づけないので、通常チャンネルとして
+    送って通らなかったときはフォーラムの形でもう一度だけ試す。"""
+    url = config.DISCORD_WEBHOOK_URL_ERROR
+    if not url:
+        print("error channel not configured: " + message[:200])
+        return
     try:
-        await post(config.DISCORD_WEBHOOK_URL_ERROR, message)
+        if await post(url, message):
+            return
+        print("error channel: 通常チャンネルとして送れず。フォーラムとして再試行")
+        await post(url, message, thread_name="エラー " + _now_hm())
     except Exception as exc:  # noqa: BLE001
         print("error channel post failed: " + str(exc))
+
+
+def _now_hm() -> str:
+    from datetime import datetime
+    return datetime.now(config.JST).strftime("%m-%d %H:%M")
