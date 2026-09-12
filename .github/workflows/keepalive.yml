@@ -1,0 +1,12 @@
+name: keepalive (14:50-15:45 JST)
+on:
+  schedule:
+    - cron: "50-58/2 5 * * 1-5"
+    - cron: "0-44/2 6 * * 1-5"
+  workflow_dispatch:
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: wake Render
+        run: curl -sS --max-time 60 "${{ secrets.RENDER_URL }}/" | head -c 300 || true
