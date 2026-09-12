@@ -8,6 +8,7 @@ from __future__ import annotations
 import csv
 import io
 import json
+from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Any, Dict
 
@@ -27,11 +28,32 @@ def _secret_ok(request: Request) -> bool:
     return bool(config.SUMMARY_SECRET) and request.query_params.get("secret", "") == config.SUMMARY_SECRET
 
 
+# 起動時の結果を残しておき、/ で見えるようにする。
+# ここで例外を投げてしまうと Render は「Exited with status 1」だけを残して落ち、
+# / も開けなくなって原因が分からない。落とさずに起動し、理由を画面に出す。
+STARTUP: Dict[str, Any] = {}
+
+
 async def startup() -> None:
     db = get_db()
-    await db.init_schema(schema_sql())
-    await market.load_stock_master(force=True)
-    print("startup ok: db=%s version=%s" % (db.kind, config.APP_VERSION))
+    STARTUP["db"] = db.kind
+    STARTUP["turso_url_prefix"] = (config.TURSO_DATABASE_URL.split("://")[0] + "://") if "://" in config.TURSO_DATABASE_URL else "(未設定)"
+    STARTUP["turso_token"] = "あり" if config.TURSO_AUTH_TOKEN else "なし"
+    try:
+        await db.init_schema(schema_sql())
+        STARTUP["schema"] = "ok"
+        STARTUP["error"] = None
+    except Exception as exc:  # noqa: BLE001
+        STARTUP["schema"] = "failed"
+        STARTUP["error"] = "%s: %s" % (type(exc).__name__, str(exc)[:400])
+        print("startup: init_schema failed -> " + STARTUP["error"])
+    try:
+        await market.load_stock_master(force=True)
+        STARTUP["stock_master"] = "ok"
+    except Exception as exc:  # noqa: BLE001
+        STARTUP["stock_master"] = "failed: " + str(exc)[:200]
+        print("startup: stock master failed -> " + str(exc))
+    print("startup done: db=%s schema=%s version=%s" % (db.kind, STARTUP.get("schema"), config.APP_VERSION))
 
 
 async def health(request: Request) -> JSONResponse:
@@ -41,7 +63,9 @@ async def health(request: Request) -> JSONResponse:
     except Exception as exc:  # noqa: BLE001
         n = "error: " + str(exc)[:80]
     return JSONResponse({
-        "status": "ok", "version": config.APP_VERSION, "db": db.kind, "signals": n,
+        "status": "ok" if STARTUP.get("schema") == "ok" else "起動時に問題あり",
+        "startup": STARTUP,
+        "version": config.APP_VERSION, "db": db.kind, "signals": n,
         "expected_pine_version": config.EXPECTED_PINE_VERSION,
         "discord_realtime": bool(config.DISCORD_WEBHOOK_URL_REALTIME), "discord_digest": bool(config.DISCORD_WEBHOOK_URL_DIGEST),
         "discord_error": bool(config.DISCORD_WEBHOOK_URL_ERROR), "openai": bool(config.OPENAI_API_KEY),
@@ -133,4 +157,13 @@ routes = [
     Route("/stock-master/status", stock_master_status),
 ]
 
-app = Starlette(routes=routes, on_startup=[startup])
+# Starlette の新しい版では on_startup が無くなっているので lifespan を使う。
+# （on_startup のままだと読み込みの時点で TypeError になり、Render は
+#   「Exited with status 1」だけを残して落ちる。原因が見えないので注意）
+@asynccontextmanager
+async def lifespan(app_):
+    await startup()
+    yield
+
+
+app = Starlette(routes=routes, lifespan=lifespan)
