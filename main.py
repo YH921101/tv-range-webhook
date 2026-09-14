@@ -15,7 +15,7 @@ from typing import Any, Dict
 from starlette.applications import Starlette
 from starlette.background import BackgroundTask
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import JSONResponse, PlainTextResponse, Response
 from starlette.routing import Route
 
 from app import config, discord, market, pipeline, summaries
@@ -73,6 +73,16 @@ async def health(request: Request) -> JSONResponse:
     })
 
 
+async def ping(request: Request) -> PlainTextResponse:
+    """Render を起こしておくためだけの入口。返すのは2文字。
+
+    起こす役の定期実行サービスは、応答の大きさや時間に上限があることがある。
+    `/` は状態を見るための JSON を返すので、そちらは人が開く用にして、
+    機械が叩く用はここに分ける。DB にも触らない。
+    """
+    return PlainTextResponse("ok")
+
+
 async def webhook_tradingview(request: Request) -> JSONResponse:
     """先に 200 を返し、処理は裏に回す（TradingView の待ち時間切れを避ける）。"""
     received_at = datetime.now(JST).isoformat(timespec="seconds")
@@ -87,8 +97,9 @@ async def webhook_tradingview(request: Request) -> JSONResponse:
 async def signals_recent(request: Request) -> JSONResponse:
     limit = min(max(int(request.query_params.get("limit", "20")), 1), 200)
     rows = await get_db().execute(
-        "SELECT signal_id, bar_date, symbol, name, base_class, quality_grade, c_fired, c_side, c_kind, pos_pct, touch_up, touch_dn, "
-        "width_pct, stability, delivered, verify_status FROM signals ORDER BY received_at DESC LIMIT ?", [limit])
+        "SELECT signal_id, bar_date, mode, symbol, name, quality_grade, confidence, confidence_score, c_fired, c_side, c_kind, "
+        "pos_pct, touch_up, touch_dn, width_pct, stability, delivered, verify_status, ai_model, discord_thread_url, cautions "
+        "FROM signals ORDER BY received_at DESC LIMIT ?", [limit])
     return JSONResponse({"ok": True, "count": len(rows), "signals": rows})
 
 
@@ -118,16 +129,33 @@ async def export_csv(request: Request) -> Response:
 
 
 def _summary_route(fn):
+    """まとめ配信の入口。
+
+    `bg=1` を付けると、先に 200 を返して処理は裏に回す。
+    定期実行のサービス（cron-job.org）は30秒で打ち切るので、AI コメントを作る
+    引け後まとめは同期のままだと毎回「失敗」と記録され、失敗が続くとジョブが
+    自動で無効化されてしまう。手で叩いて結果を見たいときは bg を付けない。
+    """
     async def handler(request: Request) -> JSONResponse:
         if not _secret_ok(request):
             return JSONResponse({"ok": False, "error": "invalid secret"}, status_code=403)
         date = request.query_params.get("date") or request.query_params.get("month")
         force = request.query_params.get("force", "false").lower() in ("1", "true", "yes")
-        try:
-            return JSONResponse(await fn(get_db(), date, force))
-        except Exception as exc:  # noqa: BLE001
-            await discord.error("🚨 まとめ配信エラー %s: %s" % (fn.__name__, str(exc)[:300]))
-            return JSONResponse({"ok": False, "error": str(exc)}, status_code=500)
+        bg = request.query_params.get("bg", "false").lower() in ("1", "true", "yes")
+
+        async def run() -> Any:
+            try:
+                return await fn(get_db(), date, force)
+            except Exception as exc:  # noqa: BLE001
+                await discord.error("🚨 まとめ配信エラー %s: %s" % (fn.__name__, str(exc)[:300]))
+                return {"ok": False, "error": str(exc)}
+
+        if bg:
+            return JSONResponse(
+                {"ok": True, "queued": True, "job": fn.__name__, "at": datetime.now(JST).isoformat(timespec="seconds")},
+                background=BackgroundTask(run))
+        result = await run()
+        return JSONResponse(result, status_code=200 if result.get("ok", True) else 500)
     return handler
 
 
@@ -180,6 +208,7 @@ async def stock_master_status(request: Request) -> JSONResponse:
 
 routes = [
     Route("/", health),
+    Route("/ping", ping),
     Route("/webhook/tradingview", webhook_tradingview, methods=["POST"]),
     Route("/signals/recent", signals_recent),
     Route("/signals/count", signals_count),
