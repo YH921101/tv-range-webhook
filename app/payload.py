@@ -83,11 +83,19 @@ def flatten(payload: Dict[str, Any], received_at: str) -> Dict[str, Any]:
     shadow = {str(x.get("method")): x for x in (payload.get("shadow") or []) if isinstance(x, dict)}
     a = shadow.get("A", {})
     b = shadow.get("B", {})
+    pr = payload.get("params") if isinstance(payload.get("params"), dict) else {}
     vz1 = ev.get("volzone_1_20") or {}
     vz2 = ev.get("volzone_21_40") or {}
     vz3 = ev.get("volzone_41_60") or {}
 
     row: Dict[str, Any] = {
+        # Pine がいま使っている入力値。再計算を同じ設定で回すためのもの。
+        # DB の列ではないので保存はされない（payload_json には元のまま残る）。
+        "_params": {k: v for k, v in ((k2, to_float(pr.get(k2))) for k2 in (
+            "sigma_mult", "pctile", "max_slope_atr", "max_eff_ratio", "flat_thr",
+            "touch_zone", "touch_exit", "min_width_pct", "min_width_atr",
+            "max_width_atr", "stab_delta", "min_stability")) if v is not None},
+
         "signal_id": s(payload.get("signal_id")),
         "received_at": received_at,
         "bar_date": s(payload.get("bar_date")),

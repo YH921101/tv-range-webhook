@@ -83,6 +83,10 @@ def build_payload(bars: list, length: int = 30) -> dict:
         "signal": {"method": "C", "fired": fired, "side": side, "kind": "entry" if fired else "", "break_up": False, "break_down": False},
         "shadow": [{"method": "A", "width_type": "raff", "upper": rc.channel_a.upper, "lower": rc.channel_a.lower, "pos_pct": rc.channel_a.pos_pct, "fired": False, "side": ""},
                    {"method": "B", "upper": ch.upper, "lower": ch.lower, "pos_pct": pos, "fired": fired, "side": side}],
+        # Pine が送ってくる入力値。Render はこれで再計算する
+        "params": {"sigma_mult": 2.0, "pctile": 90.0, "max_slope_atr": 0.10, "max_eff_ratio": 0.35,
+                   "flat_thr": -0.5, "touch_zone": 15.0, "touch_exit": 35.0, "min_width_pct": 0.0,
+                   "min_width_atr": 3.0, "max_width_atr": 15.0, "stab_delta": 5, "min_stability": 0.7},
         "evidence": {"round_up": math.ceil(last.close / 100) * 100, "round_down": math.floor(last.close / 100) * 100,
                      "body_high_20": max(max(b.open, b.close) for b in bars[-21:-1]), "body_high_40": max(max(b.open, b.close) for b in bars[-41:-1]),
                      "body_high_60": max(max(b.open, b.close) for b in bars[-61:-1]),
@@ -232,6 +236,19 @@ async def main() -> None:
 
     # 受信ログと件数照合
     rc_ = await summaries.receive_check(db, "2026-09-09", 0)
+    # main.py そのものが読み込めて、起動処理が通ること。
+    # ここを試していなかったので、Starlette の版が上がって on_startup が
+    # 無くなったのに気づかず、Render で「Exited with status 1」になった。
+    import importlib
+    import starlette
+    main_mod = importlib.import_module("main")
+    print("starlette %s / main.py 読み込み ok / ルート %d本" % (starlette.__version__, len(main_mod.routes)))
+    await main_mod.startup()
+    print("startup:", main_mod.STARTUP)
+    assert main_mod.STARTUP.get("schema") == "ok", main_mod.STARTUP
+    res_health = await main_mod.health(None)  # type: ignore[arg-type]
+    assert res_health.status_code == 200
+
     print("receive check:", rc_)
     await db.close()
     print("ALL OK")

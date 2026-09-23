@@ -24,8 +24,11 @@ def _cands(row: Dict[str, Any]) -> List[Tuple[float, float, float, str, float]]:
             return
         out.append((v, v, v, label, score))
 
-    pt(row.get("round_up"), "キリ番", SCORE_ROUND)
-    pt(row.get("round_down"), "キリ番", SCORE_ROUND)
+    # 値を添える。「キリ番」だけだと、端の値そのものがキリ番だと読めてしまう
+    for k in ("round_up", "round_down"):
+        v = row.get(k)
+        if v:
+            pt(v, "キリ番%s" % format(int(round(float(v))), ","), SCORE_ROUND)
     for key, label in (("ma5", "5MA"), ("ma10", "10MA"), ("ma20", "20MA"), ("ma50", "50MA"), ("ma100", "100MA")):
         pt(row.get(key), label, SCORE_MA[label])
     for key, label in (("body_high_20", "20日実体高値"), ("body_high_40", "40日実体高値"), ("body_high_60", "60日実体高値"),

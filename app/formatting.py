@@ -8,6 +8,9 @@ from . import levels
 CLASS_JP = {"uptrend_pause": "上昇中のヨコヨコ", "bottoming": "底値圏", "directionless": "方向感なし", "downtrend": "下落中"}
 KIND_JP = {"entry": "到達", "deep": "深追い", "spring": "復帰", "pullback": "押し目", "outside": "端の外"}
 SIDE_JP = {"LONG": "下端 買い", "SHORT": "上端 売り"}
+# 一目で分かる印。信頼度（＝いま引いている端がどれだけ確かか）をそのまま記号にしたもの。
+# 儲かる確率ではなく「枠の確かさ」なので、そこは取り違えないこと。
+MARK = {"強": "◎", "中": "○", "弱": "△"}
 
 
 def f(v: Any, digits: int = 1, sign: bool = False) -> str:
@@ -50,7 +53,7 @@ def display_name(row: Dict[str, Any]) -> str:
     return "%s %s" % (row.get("symbol") or "", row.get("name") or "")
 
 
-def head_line(row: Dict[str, Any], prefix: str = "📐") -> str:
+def head_line(row: Dict[str, Any], prefix: str = "") -> str:
     cls = CLASS_JP.get(row.get("base_class") or "", "-")
     side = SIDE_JP.get(row.get("c_side") or "", row.get("c_side") or "-")
     kind = KIND_JP.get(row.get("c_kind") or "", "")
@@ -58,15 +61,17 @@ def head_line(row: Dict[str, Any], prefix: str = "📐") -> str:
     conf = row.get("confidence") or "-"
     sc = row.get("confidence_score")
     conf_text = conf + ("" if sc is None else " %s点" % f(sc, 0))
-    return "%s %s｜日足 %s%s｜%s｜品質 %s（反応 上%s / 下%s）｜信頼度 %s" % (
-        prefix, display_name(row), side, ("・" + kind if kind and kind != "到達" else ""), cls, grade,
+    mark = MARK.get(conf, "・")
+    return "%s %s%s｜日足 %s%s｜%s｜品質 %s（反応 上%s / 下%s）｜信頼度 %s" % (
+        mark, (prefix + " ") if prefix else "", display_name(row),
+        side, ("・" + kind if kind and kind != "到達" else ""), cls, grade,
         row.get("touch_up"), row.get("touch_dn"), conf_text)
 
 
 def realtime_message(row: Dict[str, Any], stats: Optional[Dict[str, Any]] = None, provisional: bool = False) -> str:
     price = row.get("price")
     _y = lambda v: yen(v, row.get("currency"))
-    lines = [head_line(row, "⚡ 速報（未確定）" if provisional else "📐")]
+    lines = [head_line(row, "⚡速報（未確定）" if provisional else "")]
     lines.append("💹 %s%s（%s%%）｜位置 %s%%｜幅 %s ATR（%s%%）｜傾き %s ATR/日｜安定度 %s" % (
         _y(price), unit(row.get("currency")), f(row.get("change_pct"), 1, True), f(row.get("pos_pct"), 0), f(row.get("width_atr"), 1), f(row.get("width_pct"), 1),
         f(row.get("slope_atr"), 2), f(row.get("stability"), 2)))
@@ -108,7 +113,11 @@ def thread_name(row: Dict[str, Any], date_text: str) -> str:
     side = "買" if (row.get("c_side") or "") == "LONG" else "売"
     kind = KIND_JP.get(row.get("c_kind") or "", "")
     cls = CLASS_JP.get(row.get("base_class") or "", "")
-    return "%s %s %s%s %s 品質%s" % (date_text[5:], display_name(row), side, ("・" + kind if kind in ("復帰", "押し目", "端の外") else ""), cls, row.get("quality_grade") or "-")
+    # スレッドの一覧で印が先に見えるように、先頭に置く
+    mark = MARK.get(row.get("confidence") or "", "・")
+    return "%s %s %s %s%s %s 信頼度%s" % (
+        mark, date_text[5:], display_name(row), side,
+        ("・" + kind if kind in ("復帰", "押し目", "端の外") else ""), cls, row.get("confidence") or "-")
 
 
 def digest_row(row: Dict[str, Any], idx: int) -> str:

@@ -222,10 +222,13 @@ class Recomputed:
 
 def recompute(bars: Sequence[Bar], length: int, width_type: str, params: Optional[Dict[str, float]] = None) -> Optional[Recomputed]:
     """Pine v7 の三層の数字を日足から計算し直す。params は Pine の入力値と合わせる。"""
+    # 既定値は Pine の入力の既定と一致させておくこと。
+    # ここがずれると再計算が毎回「食い違い」になり、確認の仕組みが役に立たなくなる。
+    # 通常は Pine が params を送ってくるので、この既定は古い Pine 用の受け皿。
     p = {
         "sigma_mult": 2.0, "pctile": 90.0, "max_slope_atr": 0.10, "max_eff_ratio": 0.35,
-        "flat_thr": -0.5, "touch_zone": 15.0, "touch_exit": 35.0, "min_width_pct": 5.0,
-        "min_width_atr": 2.0, "max_width_atr": 15.0, "stab_delta": 10, "min_stability": 0.6,
+        "flat_thr": -0.5, "touch_zone": 15.0, "touch_exit": 35.0, "min_width_pct": 0.0,
+        "min_width_atr": 3.0, "max_width_atr": 15.0, "stab_delta": 5, "min_stability": 0.7,
     }
     if params:
         p.update(params)

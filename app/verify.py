@@ -20,7 +20,8 @@ def verify_row(row: Dict[str, Any], bars: List[Bar]) -> Dict[str, Any]:
         return {"status": "skipped", "reason": "no bars or bad length"}
     if bars[-1].date != row.get("bar_date"):
         return {"status": "skipped", "reason": "last bar date %s != %s" % (bars[-1].date, row.get("bar_date"))}
-    rc = recompute(bars, length, width_type)
+    # Pine が送ってきた入力値で計算し直す。無ければ既定（Pine の既定と揃えてある）。
+    rc = recompute(bars, length, width_type, row.get("_params") or None)
     if rc is None:
         return {"status": "skipped", "reason": "not enough bars"}
 
